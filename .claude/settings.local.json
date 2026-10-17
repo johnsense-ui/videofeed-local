@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(./gradlew:*)",
+      "Bash(git:*)",
+      "Bash(rm:*)",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Skill(update-config)",
+      "Bash(gh pr:*)",
+      "Bash(find /c/Users/dannn/AndroidStudioProjects/VideoFeed/shared/build/reports/tests -name \"FeedViewModelTest.html\" -exec cat {} \\\\;)",
+      "Bash(xargs sed:*)",
+      "Read(//mnt/c/Users/dannn/AndroidStudioProjects/**)",
+      "Bash(find shared:*)",
+      "Read(//c/Users/dannn/AndroidStudioProjects//**)",
+      "Bash(wslpath \"C:\\\\Users\\\\dannn\\\\AndroidStudioProjects\\\\VideoFeed\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)",
+      "Bash(cmd.exe:*)"
+    ]
+  }
+}

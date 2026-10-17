@@ -1,0 +1,23 @@
+name: probe
+
+on: workflow_dispatch
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: 环境
+        run: |
+          echo "=== ${{ matrix.os }} ==="
+          sw_vers
+          xcodebuild -version || true
+          ls /Applications | grep -i "^Xcode" || true
+          /usr/libexec/java_home -V 2>&1 | head -30 || true
+          java -version 2>&1 || true
+          echo "--- brew xcode list ---"
+          ls /Applications/Xcode*.app 2>/dev/null | head
