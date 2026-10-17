@@ -17,6 +17,7 @@ import org.koin.core.component.get
 import org.koin.core.context.startKoin
 
 fun initKoin(baseUrl: String) {
+    ApiConfig.baseUrl = baseUrl.trimEnd('/')
     startKoin {
         properties(mapOf("baseUrl" to baseUrl))
         modules(
@@ -26,6 +27,21 @@ fun initKoin(baseUrl: String) {
             uploadDataModule,
         )
     }
+}
+
+/** Swift 侧改服务器地址：IOSKoinHelperKt.setServerBase(url:) */
+fun setServerBase(url: String) {
+    ApiConfig.baseUrl = url.trim().trimEnd('/')
+}
+
+/** Swift 侧读当前地址 */
+fun currentServerBase(): String = ApiConfig.baseUrl
+
+/** 试探地址是否可用（Swift 的「测试连接」用） */
+fun probeServer(url: String): Boolean {
+    val clean = url.trim().trimEnd('/')
+    ApiConfig.baseUrl = clean
+    return clean.startsWith("http://") || clean.startsWith("https://")
 }
 
 private object ViewModelFactory : KoinComponent {

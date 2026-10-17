@@ -4,10 +4,11 @@ import Shared
 @main
 struct iosAppApp: App {
     init() {
-        // 本地视频库。改地址就改这里：
-        //   局域网   http://172.20.10.3:6688
-        //   Tailscale http://100.78.220.84:6688
-        IOSKoinHelperKt.doInitKoin(baseUrl: "http://172.20.10.3:6688")
+        // 地址优先级：UserDefaults（App 里齿轮改过的） > 默认值
+        let saved = UserDefaults.standard.string(forKey: "dzc.serverBase") ?? ""
+        let base = saved.isEmpty ? "http://172.29.8.196:6688" : saved
+        IOSKoinHelperKt.setServerBase(url: base)
+        IOSKoinHelperKt.doInitKoin(baseUrl: base)
     }
 
     var body: some Scene {
