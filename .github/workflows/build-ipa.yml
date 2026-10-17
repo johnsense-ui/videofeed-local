@@ -1,0 +1,88 @@
+name: build-ipa
+
+# macOS 26 runner：Xcode 26.6 + JDK 21，正好匹配 Kotlin 2.3.20 / Swift Export / objectVersion 77
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 选择 Xcode
+        run: |
+          ls /Applications | grep -i '^Xcode' || true
+          if [ -d /Applications/Xcode_26.6.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.6.app
+          else
+            sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          fi
+          xcodebuild -version
+
+      - name: Java / Gradle 环境
+        run: |
+          /usr/libexec/java_home -V 2>&1 | head -20 || true
+          java -version || true
+          chmod +x ./gradlew
+          echo "ANDROID_HOME=$ANDROID_HOME  SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "${ANDROID_HOME}" 2>/dev/null | head || true
+
+      - name: 先单独构建 shared 框架（失败在这里更好排查）
+        run: |
+          export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+          ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
+
+      - name: Xcode 编译
+        run: |
+          cd iosApp
+          xcodebuild \
+            -project iosApp.xcodeproj \
+            -target iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee build.log
+
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::没有 .app 产物"
+            tail -60 build.log
+            exit 1
+          fi
+          echo "APP=$APP"
+
+      - name: 失败保日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: |
+            iosApp/build.log
+            shared/build/**/*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: 打 ipa
+        run: |
+          cd iosApp
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          mkdir -p ../out/Payload
+          cp -R "$APP" ../out/Payload/
+          cd ../out
+          zip -qry VideoFeed-unsigned.ipa Payload
+          ls -lh VideoFeed-unsigned.ipa
+
+      - name: 上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoFeed-unsigned-ipa
+          path: out/VideoFeed-unsigned.ipa
+          retention-days: 30

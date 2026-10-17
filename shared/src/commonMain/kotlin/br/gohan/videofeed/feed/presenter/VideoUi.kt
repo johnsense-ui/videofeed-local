@@ -7,10 +7,13 @@ data class VideoUi(
     val title: String,
     val cdnUrl: String,
     val thumbnailUrl: String?,
-    val uploaderName: String
+    val uploaderName: String,
+    val likeCount: Int = 0,
+    val authorId: String = ""
 )
 
 fun Video.toVideoUi() = VideoUi(
     id = id, title = title, cdnUrl = cdnUrl,
-    thumbnailUrl = thumbnailUrl, uploaderName = uploaderName
+    thumbnailUrl = thumbnailUrl, uploaderName = uploaderName,
+    likeCount = likeCount, authorId = authorId
 )

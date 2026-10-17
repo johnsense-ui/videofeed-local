@@ -1,7 +1,7 @@
 package br.gohan.videofeed.feed.data
 
-import br.gohan.videofeed.feed.data.dto.FeedResponseDto
-import br.gohan.videofeed.feed.data.dto.VideoDtoData
+import br.gohan.videofeed.feed.data.dto.LocalFeedResponseDto
+import br.gohan.videofeed.feed.data.dto.LocalVideoDto
 import br.gohan.videofeed.core.network.get
 import br.gohan.videofeed.core.error.DataError
 import br.gohan.videofeed.core.error.Result
@@ -11,29 +11,46 @@ import br.gohan.videofeed.feed.domain.VideoRemoteDataSource
 import br.gohan.videofeed.core.model.Video
 import io.ktor.client.HttpClient
 
+/**
+ * 原来打的是 Ktor 后端的 /feed；
+ * 现在直接打本地视频库的 /api/videos，视频流走 /api/stream/{id}，封面走 /api/poster/{id}。
+ */
 class KtorVideoDataSource(
     private val httpClient: HttpClient,
     private val baseUrl: String
 ) : VideoRemoteDataSource {
 
-    override suspend fun getFeed(page: Int, limit: Int): Result<FeedResult, DataError.Network> =
-        httpClient.get<FeedResponseDto>(
-            route = "/feed",
-            baseUrl = baseUrl,
-            queryParameters = mapOf("page" to page, "limit" to limit)
-        ).map { it.toDomain() }
+    override suspend fun getFeed(page: Int, limit: Int): Result<FeedResult, DataError.Network> {
+        val offset = ((page - 1).coerceAtLeast(0)) * limit
+        return httpClient.get<LocalFeedResponseDto>(
+            route = "/api/videos",
+            baseUrl = baseUrl.trimEnd('/'),
+            queryParameters = mapOf(
+                "limit" to limit,
+                "offset" to offset,
+                "sort" to "newest"
+            )
+        ).map { it.toDomain(page) }
+    }
 
-    private fun FeedResponseDto.toDomain() = FeedResult(
-        videos = videos.map { it.toDomain() },
+    private fun LocalFeedResponseDto.toDomain(page: Int) = FeedResult(
+        videos = items.map { it.toDomain() },
         page = page,
-        hasMore = hasMore
+        hasMore = (offset + items.size) < total
     )
 
-    private fun VideoDtoData.toDomain() = Video(
-        id = id,
-        title = title,
-        cdnUrl = cdnUrl,
-        thumbnailUrl = thumbnailUrl,
-        uploaderName = uploaderName
-    )
+    private fun LocalVideoDto.toDomain(): Video {
+        val host = baseUrl.trimEnd('/')
+        val captionText = caption?.takeIf { it.isNotBlank() } ?: title.orEmpty()
+        val author = authorName?.takeIf { it.isNotBlank() } ?: "未知作者"
+        return Video(
+            id = id.toString(),
+            title = captionText,
+            cdnUrl = "$host/api/stream/$id",
+            thumbnailUrl = "$host/api/poster/$id",
+            uploaderName = author,
+            likeCount = digg,
+            authorId = authorId.orEmpty()
+        )
+    }
 }

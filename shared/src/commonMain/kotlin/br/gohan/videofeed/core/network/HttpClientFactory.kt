@@ -15,10 +15,18 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
 object HttpClientFactory {
     fun create(engine: HttpClientEngine, tokenStorage: TokenStorage): HttpClient = HttpClient(engine) {
-        install(ContentNegotiation) { json() }
+        install(ContentNegotiation) {
+            // 本地视频库字段很多，多余字段直接忽略，别让反序列化失败
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                explicitNulls = false
+            })
+        }
         install(Logging) {
             logger = object : Logger {
                 override fun log(message: String) {

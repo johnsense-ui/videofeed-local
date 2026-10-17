@@ -5,5 +5,7 @@ data class Video(
     val title: String,
     val cdnUrl: String,
     val thumbnailUrl: String?,
-    val uploaderName: String
+    val uploaderName: String,
+    val likeCount: Int = 0,
+    val authorId: String = ""
 )
