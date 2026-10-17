@@ -29,13 +29,11 @@ jobs:
           /usr/libexec/java_home -V 2>&1 | head -20 || true
           java -version || true
           chmod +x ./gradlew
-          echo "ANDROID_HOME=$ANDROID_HOME  SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "${ANDROID_HOME}" 2>/dev/null | head || true
 
-      - name: 先单独构建 shared 框架（失败在这里更好排查）
+      - name: 构建 shared 框架
         run: |
           export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-          ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
+          ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon
 
       - name: Xcode 编译
         run: |
@@ -45,16 +43,18 @@ jobs:
             -target iosApp \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath build \
+            CONFIGURATION_BUILD_DIR="$PWD/build/Release-iphoneos" \
+            OBJROOT="$PWD/build/obj" \
+            SYMROOT="$PWD/build/sym" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             build 2>&1 | tee build.log
 
-          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          APP=$(find build/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
           if [ -z "$APP" ]; then
             echo "::error::没有 .app 产物"
-            tail -60 build.log
+            tail -80 build.log
             exit 1
           fi
           echo "APP=$APP"
@@ -66,14 +66,13 @@ jobs:
           name: build-log
           path: |
             iosApp/build.log
-            shared/build/**/*.log
           retention-days: 7
           if-no-files-found: ignore
 
       - name: 打 ipa
         run: |
           cd iosApp
-          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          APP=$(find build/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
           mkdir -p ../out/Payload
           cp -R "$APP" ../out/Payload/
           cd ../out
